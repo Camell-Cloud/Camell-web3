@@ -19,7 +19,7 @@ export const author = {
 };
 
 export const seoData = {
-  title: 'CAMT',
+  title: 'Camell Coin',
   description:
     'The Camell project is an initiative that combines cloud storage services with a blockchain token economy to create a new business model.',
   author: author.name,
