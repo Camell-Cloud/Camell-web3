@@ -3,10 +3,7 @@ import { navbarSection } from '@/lib/content/navbar';
 import useWindowWidth from '@/lib/hooks/use-window-width';
 import { getBreakpointsWidth } from '@/lib/utils/helper';
 
-import { Button, DarkModeButton, Link as CLink, NavButton } from '@/components';
-import { ConnectButton } from "thirdweb/react";
-import { createWallet } from 'thirdweb/wallets';
-import { client } from "./client";
+import { DarkModeButton, Link as CLink, NavButton } from '@/components';
 
 import { fadeIn, slideIn } from '@/styles/animations';
 
@@ -14,8 +11,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import { ConnectWallet } from '@thirdweb-dev/react';
-import CustomConnectWalletButton from '@/containers/layout/CustomConnectWallet';
+import CustomConnectWalletButton from '@/components/buttons/CustomConnectWallet';
 
 /**
  * Hides the navbar while scrolling down
@@ -129,22 +125,6 @@ const Navbar = () => {
               </NavItem>
             ))}
             <div className="flex items-center justify-between gap-5 xl:gap-6">
-              {/* Wallet Connect Button */}
-              {/* {cta && (
-                <Button
-                  type="link"
-                  href={cta.url}
-                  sameTab={cta?.sameTab}
-                  variants={slideIn({
-                    delay: ANIMATION_DELAY + navLinks.length / 10,
-                    direction: 'down',
-                  })}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {cta.title}
-                </Button>
-              )} */}
               <CustomConnectWalletButton cta={cta} />
               {/* Wallet Connect Button */}
               <DarkModeButton

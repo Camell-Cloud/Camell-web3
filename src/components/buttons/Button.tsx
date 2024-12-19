@@ -1,6 +1,5 @@
 'use client';
 import { removeKeys } from '@/lib/utils/helper';
-
 import { motion, MotionProps } from 'framer-motion';
 import Link from 'next/link';
 
@@ -17,16 +16,18 @@ interface LinkProps extends DefaultProps {
 }
 
 interface ButtonProps extends DefaultProps {
-  onClick?: (event: React.MouseEvent) => void;
+  onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseEnter?: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  onMouseLeave?: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
 type Props =
   | ({
-      type?: 'button';
-    } & ButtonProps)
+    type?: 'button';
+  } & ButtonProps)
   | ({
-      type: 'link';
-    } & LinkProps);
+    type: 'link';
+  } & LinkProps);
 
 // For separating animation props from button props
 const buttonProps: Array<keyof Props | keyof LinkProps> = [
@@ -45,17 +46,15 @@ const Button = (props: Props & MotionProps) => {
     type = 'button',
     size = 'sm',
     center = false,
+    ...restProps // Capture remaining props
   } = props;
 
-  const classes = `${
-    size === 'sm'
-      ? 'p-2 px-4 text-sm border-[1.5px] '
+  const classes = `${size === 'sm'
+      ? 'p-2 px-4 text-sm border-[1.5px]'
       : 'text-sm p-4 px-6 border-2'
-  } block ${
-    center ? 'mx-auto' : ''
-  } w-fit font-mono capitalize rounded border-accent text-accent hover:bg-accent-light focus:outline-none focus:bg-accent-light duration-150 cursor-pointer ${className}`;
+    } block ${center ? 'mx-auto' : ''
+    } w-fit font-mono capitalize rounded border-accent text-accent hover:bg-accent-light focus:outline-none focus:bg-accent-light duration-150 cursor-pointer ${className}`;
 
-  // TODO: Needs to improve this framer motion logic
   if (props.type === 'link') {
     const { sameTab, ...motionProps } = props;
     removeKeys<Props & LinkProps>(motionProps, buttonProps);
@@ -74,11 +73,15 @@ const Button = (props: Props & MotionProps) => {
     );
   }
 
-  if (type == 'button') {
+  if (type === 'button') {
     return (
-      <button type={type} className={classes} onClick={props.onClick}>
+      <motion.button
+        type="button"
+        className={classes}
+        {...restProps} // Spread remaining props for native button support
+      >
         {children}
-      </button>
+      </motion.button>
     );
   }
 
