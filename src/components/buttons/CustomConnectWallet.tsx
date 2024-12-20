@@ -42,8 +42,6 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
       const { address: connectedAddress } = await walletRef.current.connect();
       const formattedAddress = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-5)}`;
       setAddress(formattedAddress);
-
-      localStorage.setItem("walletAddress", connectedAddress);
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }
@@ -55,8 +53,6 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
         await walletRef.current.disconnect();
         walletRef.current = null;
         setAddress(null);
-
-        localStorage.removeItem("walletAddress");
       } else {
         console.warn("No wallet instance found.");
       }
@@ -66,11 +62,6 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
   };
 
   useEffect(() => {
-    const savedAddress = localStorage.getItem("walletAddress");
-    if (savedAddress) {
-      const formattedAddress = `${savedAddress.slice(0, 6)}...${savedAddress.slice(-5)}`;
-      setAddress(formattedAddress);
-    }
   }, []);
 
   return (
