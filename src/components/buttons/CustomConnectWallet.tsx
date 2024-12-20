@@ -24,7 +24,7 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
             name: "Camell (CAMT)",
             description: "CAMT Wallet Connect",
             url: "https://camt.cloud/",
-            icons: ["https://camell-web-logo.s3.ap-northeast-2.amazonaws.com/image-removebg-preview.png"],
+            icons: ["https://camell-web-logo.s3.ap-northeast-2.amazonaws.com/camt-logo.png"],
           },
         },
         web3ModalConfig: {
