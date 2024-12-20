@@ -7,8 +7,8 @@ type Props = {
 const SocialLink = ({ href, children, className = '' }: Props) => {
   return (
     <a
-      href={href}
-      target="_blank"
+      href={href || '#'}
+      target={href ? '_blank' : undefined}
       className={`block text-sm p-2.5 hover:text-accent hover:-translate-y-1 focus:outline-none focus:text-accent focus:-translate-y-1 duration-200 ${className}`}
     >
       {children}
