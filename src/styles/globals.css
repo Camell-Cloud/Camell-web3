@@ -61,3 +61,12 @@
 .h3 {
   @apply text-xl sm:text-2xl tracking-wide capitalize font-medium text-dark-2;
 }
+
+.parent {
+  position: relative;
+}
+.child {
+  position: absolute;
+  top: 0;
+  left: 0;
+}

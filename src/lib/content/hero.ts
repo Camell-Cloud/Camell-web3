@@ -1,5 +1,4 @@
 import { HeroSectionType } from '@/lib/types/sections';
-import { resumeFileName } from '@/lib/utils/config';
 
 export const heroSection: HeroSectionType = {
   subtitle: '',
