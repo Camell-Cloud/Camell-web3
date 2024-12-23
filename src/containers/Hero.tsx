@@ -3,15 +3,12 @@ import { heroSection } from '@/lib/content/hero';
 import useWindowWidth from '@/lib/hooks/use-window-width';
 import { getBreakpointsWidth } from '@/lib/utils/helper';
 
-import { Button, Wrapper } from '@/components';
-
-import { slideUp } from '@/styles/animations';
-
-import { motion } from 'framer-motion';
+import { Wrapper } from '@/components';
+import HeroLeftSection from './HeroLeft';
+import HeroRightSection from './HeroRight';
 
 const Hero = () => {
-  const { cta, subtitle, title, tagline, description, specialText } =
-    heroSection;
+  const { cta, subtitle, title, tagline, description, specialText } = heroSection;
 
   const windowWidth = useWindowWidth();
   const md = getBreakpointsWidth('md');
@@ -25,97 +22,15 @@ const Hero = () => {
       id="hero"
       className="flex flex-col md:flex-row justify-between items-center h-full min-h-screen gap-6 mt-12 xs:gap-7 xs:mt-0"
     >
-      {/* Left Section */}
-      <div className="flex-1 flex flex-col justify-center gap-6">
-        <motion.p
-          variants={slideUp({ delay: getAnimationDelay(0) })}
-          initial="hidden"
-          animate="show"
-          className="font-mono text-sm md:text-base text-accent"
-        >
-          {subtitle}
-        </motion.p>
-
-        <div className="max-w-5xl text-4xl font-bold tracking-tighter md:text-7xl">
-          <motion.h1
-            variants={slideUp({ delay: getAnimationDelay(1) })}
-            initial="hidden"
-            animate="show"
-            className="text-slate-900 dark:text-slate-200 capitalize mb-2 leading-[1.1]"
-          >
-            {title}
-          </motion.h1>
-          <motion.h1
-            variants={slideUp({ delay: getAnimationDelay(2) })}
-            initial="hidden"
-            animate="show"
-            className="leading-[1.2]"
-          >
-            {tagline}
-          </motion.h1>
-        </div>
-
-        <motion.p
-          variants={slideUp({ delay: getAnimationDelay(3) })}
-          initial="hidden"
-          animate="show"
-          className="max-w-xl text-base md:text-lg"
-        >
-          {description}
-        </motion.p>
-
-        <motion.p
-          variants={slideUp({ delay: getAnimationDelay(4) })}
-          initial="hidden"
-          animate="show"
-          className="font-mono text-xs md:text-sm text-accent"
-        >
-          {specialText}
-        </motion.p>
-
-        {cta && (
-          <Button
-            size="lg"
-            type="link"
-            variants={slideUp({ delay: getAnimationDelay(5) })}
-            initial="hidden"
-            animate="show"
-            href={cta?.url ?? '#'}
-            className={`mt-5 xs:mt-8 md:mt-10 ${cta.hideInDesktop ? 'md:hidden' : ''
-              }`}
-            sameTab={cta?.sameTab}
-          >
-            {cta.title}
-          </Button>
-        )}
-      </div>
-
-      {/* Right Section */}
-      <div className="flex-1 flex flex-col justify-center items-center gap-6">
-        <motion.div
-          variants={slideUp({ delay: getAnimationDelay(3) })}
-          initial="hidden"
-          animate="show"
-          className="w-[490px] h-[580px] flex flex-col justify-between items-center rounded-lg border-2 border-pink-300 dark:border-white bg-opacity-50 backdrop-blur-lg p-6"
-          style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-          }}
-        >
-          <img
-            src="/camt-logo.png"
-            alt="Hero Illustration"
-            className="w-60 object-cover rounded-lg"
-          />
-          <div className="flex flex-col items-center gap-4 mt-6">
-            <Button
-              size="lg"
-              onClick={() => console.log('Buy with Crypto')}
-            >
-              Buy with Crypto
-            </Button>
-          </div>
-        </motion.div>
-      </div>
+      <HeroLeftSection
+        title={title}
+        tagline={tagline}
+        description={description}
+        specialText={specialText}
+        cta={cta}
+        getAnimationDelay={getAnimationDelay}
+      />
+      <HeroRightSection getAnimationDelay={getAnimationDelay} />
     </Wrapper>
   );
 };
