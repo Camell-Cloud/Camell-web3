@@ -14,10 +14,10 @@ export const currencies: Currency[] = [
     value: 'USDT',
     label: 'USDT',
     imgSrc: '/crypto/usdt.png',
-  }
-  // {
-  //   value: 'CAMT',
-  //   label: 'CAMT',
-  //   imgSrc: '/crypto/camt.png',
-  // },
+  },
+  {
+    value: 'CAMT',
+    label: 'CAMT',
+    imgSrc: '/crypto/camt.png',
+  },
 ];
