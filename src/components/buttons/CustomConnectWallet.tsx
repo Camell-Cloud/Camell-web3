@@ -1,17 +1,23 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button } from "@/components";
-import { WalletConnectWallet, WalletConnectChainID } from "@tronweb3/walletconnect-tron";
-
+import {
+  WalletConnectWallet,
+  WalletConnectChainID,
+} from "@tronweb3/walletconnect-tron";
+import { useWallet } from "@/context/WalletContext";
 interface CustomConnectWalletButtonProps {
   cta: {
     title: string;
   };
 }
 
-const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ cta }) => {
-  const [address, setAddress] = useState<string | null>(null);
+const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({
+  cta,
+}) => {
   const [hover, setHover] = useState<boolean>(false);
   const walletRef = useRef<WalletConnectWallet | null>(null);
+
+  const { userAddress, setUserAddress } = useWallet();
 
   const connectWallet = async () => {
     try {
@@ -40,8 +46,10 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
       });
 
       const { address: connectedAddress } = await walletRef.current.connect();
+      setUserAddress(connectedAddress);
+
       const formattedAddress = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-5)}`;
-      setAddress(formattedAddress);
+      alert(`Wallet connected!\nAddress: ${connectedAddress}`);
     } catch (error) {
       console.error("Failed to connect wallet:", error);
     }
@@ -52,7 +60,7 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
       if (walletRef.current) {
         await walletRef.current.disconnect();
         walletRef.current = null;
-        setAddress(null);
+        setUserAddress(null);
       } else {
         console.warn("No wallet instance found.");
       }
@@ -61,19 +69,20 @@ const CustomConnectWalletButton: React.FC<CustomConnectWalletButtonProps> = ({ c
     }
   };
 
-  useEffect(() => {
-  }, []);
-
   return (
     <Button
       type="button"
-      onClick={address ? disconnectWallet : connectWallet}
+      onClick={userAddress ? disconnectWallet : connectWallet}
       size="sm"
       center
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
     >
-      {address ? (hover ? "Disconnect Wallet" : `${address}`) : cta.title}
+      {userAddress
+        ? hover
+          ? "Disconnect Wallet"
+          : `${userAddress.slice(0, 6)}...${userAddress.slice(-5)}`
+        : cta.title}
     </Button>
   );
 };

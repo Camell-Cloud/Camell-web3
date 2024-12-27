@@ -24,7 +24,8 @@
     "save-dev": "^0.0.1-security",
     "sharp": "^0.31.3",
     "tailwind-merge": "^2.0.0",
-    "thirdweb": "^5.79.0"
+    "thirdweb": "^5.79.0",
+    "tronweb": "^6.0.0"
   },
   "devDependencies": {
     "@iconify/react": "^4.0.1",

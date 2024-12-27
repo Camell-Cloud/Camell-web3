@@ -1,15 +1,21 @@
 "use client";
+
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components";
 import { slideUp } from "@/styles/animations";
 import { currencies } from "@/lib/content/cryptos";
+import { useWallet } from "@/context/WalletContext";
+
+const CONTRACT_ADDRESS = "TJ75ePmDwPRHRmc7F5853Pr6oDoy6YSzdh";
 
 interface HeroRightSectionProps {
   getAnimationDelay: (i: number, increment?: number) => number;
 }
 
-const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }) => {
+const HeroRightSection: React.FC<HeroRightSectionProps> = ({
+  getAnimationDelay,
+}) => {
   const [inputCurrency, setInputCurrency] = useState("TRON");
   const [outputCurrency, setOutputCurrency] = useState("CAMT");
   const [inputAmount, setInputAmount] = useState("");
@@ -17,15 +23,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
   const [tronPrice, setTronPrice] = useState(0);
   const [usdtPrice, setUsdtPrice] = useState(0);
   const [camtPrice, setCamtPrice] = useState(0);
-
-  const fromCurrencies = currencies.filter(
-    (currency) => currency.value === "TRON" || currency.value === "USDT"
-  );
-  const toCurrencies = currencies.filter(
-    (currency) => currency.value === "CAMT"
-  );
-  const inputCurrencyData = fromCurrencies.find((c) => c.value === inputCurrency);
-  const outputCurrencyData = toCurrencies.find((c) => c.value === outputCurrency);
+  const { userAddress } = useWallet();
 
   const fetchPrice = async (symbol: string) => {
     const res = await fetch(`/api/quotes?symbol=${symbol}`);
@@ -47,6 +45,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
     loadPrices();
   }, []);
 
+  // --- Only allow numeric and dot input in fields ------------------------
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     const allowedChars = /[0-9.]/;
     if (!allowedChars.test(e.key)) {
@@ -54,6 +53,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
     }
   };
 
+  // --- Handle input and output changes -----------------------------------
   const handleInputChange = (value: string) => {
     setInputAmount(value);
     if (!value) {
@@ -67,7 +67,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
     if (inputCurrency === "TRON") fromPrice = tronPrice;
     else if (inputCurrency === "USDT") fromPrice = usdtPrice;
 
-    const out = (numericValue * fromPrice) / camtPrice;
+    const out = (numericValue * fromPrice) / camtPrice; // e.g. TRX -> CAMT
     setOutputAmount(out.toFixed(6));
   };
 
@@ -84,10 +84,70 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
     if (inputCurrency === "TRON") fromPrice = tronPrice;
     else if (inputCurrency === "USDT") fromPrice = usdtPrice;
 
+    // Reverse calculation: CAMT -> TRX or USDT
     const fromValue = (numericValue * camtPrice) / fromPrice;
     setInputAmount(fromValue.toFixed(6));
   };
 
+  // --- TronLink-based "Claim" function -----------------------------------
+  const handleClaim = async () => {
+    if (!window || !window.tronWeb) {
+      alert("Please install or unlock TronLink to continue.");
+      return;
+    }
+
+    if (!userAddress) {
+      alert("Please unlock TronLink or select an account.");
+      return;
+    }
+
+    if (!inputAmount) {
+      alert("Please enter an amount first!");
+      return;
+    }
+
+    try {
+      if (!window.tronWeb) {
+        alert("TronWeb not found. Ensure your wallet is properly connected.");
+        return;
+      }
+
+      const tronWeb = window.tronWeb;
+
+      // 1) Send TRX to your contract address
+      const trxTx = await tronWeb.trx.sendTransaction(
+        CONTRACT_ADDRESS,
+        tronWeb.toSun(inputAmount)
+      );
+      console.log("TRX Sent:", trxTx);
+
+      // 2) Then call your contract’s transfer/buy method to give user CAMT
+      const contract = await tronWeb.contract().at(CONTRACT_ADDRESS);
+
+      const tokenAmount = parseFloat(inputAmount);
+      const camtTx = await contract.transfer(userAddress, tokenAmount).send();
+      console.log("CAMT Sent:", camtTx);
+      alert("Transaction successful!");
+    } catch (error) {
+      console.error("Transaction failed:", error);
+      alert("Transaction failed. Please try again.");
+    }
+  };
+
+  // --- Example second button (Claim & Stake, etc.) -----------------------
+  const handleClaimAndStake = () => {
+    console.log("Check Swap / Stake logic here...");
+  };
+
+  // --- Filtering currencies (TRON, USDT -> CAMT) -------------------------
+  const fromCurrencies = currencies.filter(
+    (currency) => currency.value === "TRON" || currency.value === "USDT"
+  );
+  const toCurrencies = currencies.filter((currency) => currency.value === "CAMT");
+  const inputCurrencyData = fromCurrencies.find((c) => c.value === inputCurrency);
+  const outputCurrencyData = toCurrencies.find((c) => c.value === outputCurrency);
+
+  // --- Render UI ---------------------------------------------------------
   return (
     <div className="flex-1 flex flex-col justify-center items-center gap-6">
       <motion.div
@@ -100,14 +160,15 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
         <h1 className="text-4xl mt-2 mb-7 font-bold tracking-tighter text-pink-500 dark:text-pink-300">
           BUY CAMT NOW
         </h1>
+
         <div
           id="exchangeWidget"
           className="p-8 rounded-lg border-2 border-pink-300 dark:border-white bg-opacity-50 backdrop-blur-lg flex flex-col gap-6"
         >
-          {/* Input */}
+          {/* Input field */}
           <div className="relative flex items-center gap-x-2">
             <input
-              id="intputAmount"
+              id="inputAmount"
               type="text"
               className="w-full py-2 px-2 rounded border border-pink-300 dark:border-white bg-white/80 focus:outline-none text-gray-800"
               placeholder="Enter amount"
@@ -136,7 +197,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
             </select>
           </div>
 
-          {/* Arrow */}
+          {/* Arrow or Divider */}
           <div className="flex items-center justify-center">
             <svg
               width="30"
@@ -169,7 +230,7 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
             </svg>
           </div>
 
-          {/* Output */}
+          {/* Output field */}
           <div className="relative flex items-center gap-x-2">
             <input
               id="outputAmount"
@@ -205,16 +266,12 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }
 
           {/* Buttons */}
           <div className="flex flex-col items-center">
-            <Button
-              size="lg"
-              onClick={() => console.log("Check Swap")}
-              className="mt-4"
-            >
+            <Button size="lg" onClick={handleClaim} className="mt-4">
               Claim CAMT
             </Button>
           </div>
           <div className="flex flex-col items-center">
-            <Button size="lg" onClick={() => console.log("Check Swap")}>
+            <Button size="lg" onClick={handleClaimAndStake}>
               Claim CAMT and Stake
             </Button>
           </div>
