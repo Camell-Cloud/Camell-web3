@@ -6,6 +6,7 @@ import Cursor from '@/components/ui/Cursor';
 import ClientProviders from '@/app/ClientProviders';
 import '../styles/globals.css';
 import type { Metadata } from 'next';
+import { WalletProvider } from '@/context/WalletContext';
 
 export const metadata: Metadata = {
   title: seoData.title,
@@ -78,7 +79,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Cursor className="hidden dark:lg:block" />
         <ThemeProvider>
           <ClientProviders>
-            {children}
+            <WalletProvider>
+              {children}
+            </WalletProvider>
           </ClientProviders>
         </ThemeProvider>
       </body>
