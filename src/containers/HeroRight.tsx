@@ -1,45 +1,47 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components";
 import { slideUp } from "@/styles/animations";
 import { currencies } from "@/lib/content/cryptos";
-import { useWallet } from "@/context/WalletContext";
-
-const CONTRACT_ADDRESS = "TJ75ePmDwPRHRmc7F5853Pr6oDoy6YSzdh";
+import { WalletContext } from "@/context/WalletContext";
+import { TronWeb } from "tronweb";
 
 interface HeroRightSectionProps {
   getAnimationDelay: (i: number, increment?: number) => number;
 }
 
-const HeroRightSection: React.FC<HeroRightSectionProps> = ({
-  getAnimationDelay,
-}) => {
+const HeroRightSection: React.FC<HeroRightSectionProps> = ({ getAnimationDelay }) => {
   const [inputCurrency, setInputCurrency] = useState("TRON");
   const [outputCurrency, setOutputCurrency] = useState("CAMT");
   const [inputAmount, setInputAmount] = useState("");
   const [outputAmount, setOutputAmount] = useState("");
   const [tronPrice, setTronPrice] = useState(0);
-  const [usdtPrice, setUsdtPrice] = useState(0);
   const [camtPrice, setCamtPrice] = useState(0);
-  const { userAddress } = useWallet();
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const { wallet, userAddress } = useContext(WalletContext);
+  const contractAddress = process.env.NEXT_PUBLIC_TRON_CONTRACT_ADDRESS;
 
   const fetchPrice = async (symbol: string) => {
-    const res = await fetch(`/api/quotes?symbol=${symbol}`);
-    const data = await res.json();
-    return data?.data?.[symbol]?.quote?.USD?.price || 0;
+    try {
+      const res = await fetch(`/api/quotes?symbol=${symbol}`);
+      const data = await res.json();
+      return data?.data?.[symbol]?.quote?.USD?.price || 0;
+    } catch (error) {
+      console.error(`Failed to fetch price for ${symbol}:`, error);
+      return 0;
+    }
   };
 
   useEffect(() => {
     const loadPrices = async () => {
-      const [tron, usdt, camt] = await Promise.all([
+      const [tron, camt] = await Promise.all([
         fetchPrice("TRX"),
-        fetchPrice("USDT"),
         fetchPrice("CAMT"),
       ]);
       setTronPrice(tron);
-      setUsdtPrice(usdt);
       setCamtPrice(camt);
     };
     loadPrices();
@@ -56,17 +58,27 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({
   // --- Handle input and output changes -----------------------------------
   const handleInputChange = (value: string) => {
     setInputAmount(value);
-    if (!value) {
+
+    const numericValue = parseFloat(value);
+    if (!value || isNaN(numericValue)) {
+      setOutputAmount("");
+      setErrorMessage(null);
+      return;
+    }
+
+    if (numericValue < 10) {
+      setErrorMessage("Input must be at least 10.");
+      return;
+    }
+
+    setErrorMessage(null);
+
+    const fromPrice = tronPrice;
+    if (camtPrice === 0) {
+      setErrorMessage("CAMT price is not available.");
       setOutputAmount("");
       return;
     }
-    const numericValue = parseFloat(value);
-    if (isNaN(numericValue)) return;
-
-    let fromPrice = 0;
-    if (inputCurrency === "TRON") fromPrice = tronPrice;
-    else if (inputCurrency === "USDT") fromPrice = usdtPrice;
-
     const out = (numericValue * fromPrice) / camtPrice; // e.g. TRX -> CAMT
     setOutputAmount(out.toFixed(6));
   };
@@ -80,68 +92,107 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({
     const numericValue = parseFloat(value);
     if (isNaN(numericValue)) return;
 
-    let fromPrice = 0;
-    if (inputCurrency === "TRON") fromPrice = tronPrice;
-    else if (inputCurrency === "USDT") fromPrice = usdtPrice;
+    if (tronPrice === 0) {
+      setErrorMessage("TRON price is not available.");
+      return;
+    }
 
-    // Reverse calculation: CAMT -> TRX or USDT
-    const fromValue = (numericValue * camtPrice) / fromPrice;
+    const fromPrice = tronPrice;
+    const fromValue = (numericValue * camtPrice) / fromPrice; // Reverse calculation
     setInputAmount(fromValue.toFixed(6));
   };
 
   // --- TronLink-based "Claim" function -----------------------------------
   const handleClaim = async () => {
-    if (!window || !window.tronWeb) {
-      alert("Please install or unlock TronLink to continue.");
+    if (errorMessage) {
+      alert("Please input more than 10 TRX to proceed")
       return;
     }
 
-    if (!userAddress) {
-      alert("Please unlock TronLink or select an account.");
+    if (!contractAddress) {
+      alert("환경 변수에 계약 주소가 정의되지 않았습니다."); // "Contract address not defined in environment variables."
+      return;
+    }
+    if (!wallet || !userAddress) {
+      alert("지갑이 연결되어 있지 않습니다."); // "Wallet is not connected."
       return;
     }
 
-    if (!inputAmount) {
-      alert("Please enter an amount first!");
-      return;
-    }
+    const tronWeb = new TronWeb({
+      fullHost: "https://api.trongrid.io",
+    });
 
     try {
-      if (!window.tronWeb) {
-        alert("TronWeb not found. Ensure your wallet is properly connected.");
+      const numericInputAmount = parseFloat(inputAmount);
+      if (isNaN(numericInputAmount)) {
+        alert("유효하지 않은 입력 금액입니다."); // "Invalid input amount."
         return;
       }
 
-      const tronWeb = window.tronWeb;
+      const numericOutputAmount = parseFloat(outputAmount);
+      if (isNaN(numericOutputAmount)) {
+        alert("유효하지 않은 출력 금액입니다."); // "Invalid output amount."
+        return;
+      }
 
-      // 1) Send TRX to your contract address
-      const trxTx = await tronWeb.trx.sendTransaction(
-        CONTRACT_ADDRESS,
-        tronWeb.toSun(inputAmount)
+      const trxAmount = Number(tronWeb.toSun(numericInputAmount));
+      const camtAmount = (BigInt(Math.floor(numericOutputAmount)) * BigInt(10 ** 18)).toString(); // Ensure it's a string
+
+      // Create unsigned transaction
+      const unsignedTx = await tronWeb.transactionBuilder.triggerSmartContract(
+        tronWeb.address.toHex(contractAddress),
+        "purchaseWithTRX(uint256)",
+        { callValue: trxAmount },
+        [{ type: "uint256", value: camtAmount }],
+        tronWeb.address.toHex(userAddress)
       );
-      console.log("TRX Sent:", trxTx);
 
-      // 2) Then call your contract’s transfer/buy method to give user CAMT
-      const contract = await tronWeb.contract().at(CONTRACT_ADDRESS);
+      console.log("Unsigned Transaction:", unsignedTx);
 
-      const tokenAmount = parseFloat(inputAmount);
-      const camtTx = await contract.transfer(userAddress, tokenAmount).send();
-      console.log("CAMT Sent:", camtTx);
-      alert("Transaction successful!");
-    } catch (error) {
-      console.error("Transaction failed:", error);
-      alert("Transaction failed. Please try again.");
+      if (!unsignedTx.result || !unsignedTx.transaction) {
+        throw new Error("트랜잭션 생성 실패"); // "Transaction creation failed."
+      }
+
+      // WalletConnect를 통한 트랜잭션 서명 요청
+      const signedTx = await wallet.signTransaction({
+        transaction: unsignedTx.transaction,
+      });
+
+      console.log("Signed Transaction:", signedTx);
+
+      if (!signedTx || !signedTx.signature) {
+        throw new Error("트랜잭션 서명 실패"); // "Transaction signing failed."
+      }
+
+      // 서명된 트랜잭션 전송
+      const broadcast = await tronWeb.trx.sendRawTransaction({
+        ...signedTx,
+        signature: signedTx.signature,
+      });
+
+      if (broadcast.result) {
+        alert("purchaseWithTRX 호출 성공!"); // "purchaseWithTRX call succeeded!"
+        const transactionInfo = await tronWeb.trx.getTransaction(signedTx.txID);
+        console.log("Transaction Info:", transactionInfo);
+      } else {
+        console.error("트랜잭션 전송 실패:", broadcast); // "Transaction broadcast failed."
+        throw new Error("트랜잭션 전송 실패"); // "Transaction broadcast failed."
+      }
+    } catch (error: any) {
+      console.error("Error during claim:", error);
+      alert(`purchaseWithTRX 호출 실패: ${error.message || error}`); // "purchaseWithTRX call failed: [error]"
     }
   };
 
   // --- Example second button (Claim & Stake, etc.) -----------------------
   const handleClaimAndStake = () => {
     console.log("Check Swap / Stake logic here...");
+    // Implement your Claim & Stake logic here
   };
 
-  // --- Filtering currencies (TRON, USDT -> CAMT) -------------------------
+  // --- Filtering currencies (TRON -> CAMT) -------------------------------
   const fromCurrencies = currencies.filter(
-    (currency) => currency.value === "TRON" || currency.value === "USDT"
+    (currency) => currency.value === "TRON"
   );
   const toCurrencies = currencies.filter((currency) => currency.value === "CAMT");
   const inputCurrencyData = fromCurrencies.find((c) => c.value === inputCurrency);
@@ -163,14 +214,22 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({
 
         <div
           id="exchangeWidget"
-          className="p-8 rounded-lg border-2 border-pink-300 dark:border-white bg-opacity-50 backdrop-blur-lg flex flex-col gap-6"
+          className="p-8 rounded-lg border-2 border-pink-300 dark:border-white bg-opacity-50 backdrop-blur-lg flex flex-col gap-2"
         >
+          {errorMessage && (
+            <p className="text-red-500 text-sm text-left w-full">
+              {errorMessage}
+            </p>
+          )}
           {/* Input field */}
           <div className="relative flex items-center gap-x-2">
             <input
               id="inputAmount"
               type="text"
-              className="w-full py-2 px-2 rounded border border-pink-300 dark:border-white bg-white/80 focus:outline-none text-gray-800"
+              className={`w-full py-2 px-2 rounded border ${errorMessage
+                ? "border-red-500 focus:border-red-600"
+                : "border-pink-300 dark:border-white"
+                } bg-white/80 focus:outline-none text-gray-800`}
               placeholder="Enter amount"
               onKeyPress={handleKeyPress}
               value={inputAmount}
@@ -196,6 +255,9 @@ const HeroRightSection: React.FC<HeroRightSectionProps> = ({
               ))}
             </select>
           </div>
+          <p className="text-black-500 text-sm text-left w-full">
+            Please do keep in mind that there is a charge of 5 TRX Coin when Converting.
+          </p>
 
           {/* Arrow or Divider */}
           <div className="flex items-center justify-center">
